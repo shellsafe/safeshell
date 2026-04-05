@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SafeShell</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial;
+  text-align: center;
+  background: linear-gradient(to bottom, #87CEEB, #F4EDE4);
+}
+
+.screen { display: none; padding: 20px; }
+.active { display: block; }
+
+h2 { color: #1F3C88; }
+
+/* 🌴 KAART */
+.grid {
+  position: relative;
+  width: 320px;
+  height: 220px;
+  margin: 20px auto;
+  background: #F4EDE4;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.sea {
+  position: absolute;
+  right: 0;
+  width: 90px;
+  height: 100%;
+  background: linear-gradient(#5DADE2, #2E86C1);
+}
+
+/* 🐚 SCHELpen */
+.shell {
+  width: 45px;
+  height: 45px;
+  position: absolute;
+  border-radius: 50%;
+  background: #3498DB;
+}
+
+.shell.taken { background: #BDC3C7; }
+.shell.selected {
+  background: #1F3C88;
+  transform: scale(1.2);
+}
+
+/* 📍 USER */
+.user {
+  position: absolute;
+  left: 40px;
+  bottom: 30px;
+  font-size: 22px;
+}
+
+/* 🐚 REALISTISCHE SCHELP */
+.shell-anim {
+  width: 160px;
+  height: 120px;
+  margin: 40px auto;
+  position: relative;
+}
+
+/* ONDERKANT (blijft liggen) */
+.shell-bottom {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 60%;
+  background: radial-gradient(circle, #5DADE2, #1F3C88);
+  border-radius: 0 0 120px 120px;
+}
+
+/* BOVENKANT (klapt open) */
+.shell-top {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 70%;
+  background: radial-gradient(circle, #85C1E9, #1F3C88);
+  border-radius: 120px 120px 20px 20px;
+  transform-origin: bottom center;
+  transition: transform 0.5s ease;
+}
+
+/* OPEN */
+.open .shell-top {
+  transform: rotateX(120deg) translateY(-20px);
+}
+
+/* KNOP */
+button {
+  padding: 15px 25px;
+  font-size: 18px;
+  border: none;
+  border-radius: 25px;
+  margin-top: 20px;
+}
+
+.primary {
+  background: #2ECC71;
+  color: white;
+}
+
+.big {
+  width: 80%;
+  height: 100px;
+  font-size: 32px;
+}
+
+/* TIMER */
+.timer {
+  font-size: 50px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- SCREEN 1 -->
+<div id="s1" class="screen active">
+  <h2>🐚 Kies jouw SafeShell</h2>
+
+  <div class="grid" id="grid">
+    <div class="sea"></div>
+    <div class="user">📍</div>
+  </div>
+
+  <button class="primary" onclick="toConfirm()">Reserveer</button>
+</div>
+
+<!-- SCREEN 2 -->
+<div id="s2" class="screen">
+  <h2>Bevestig jouw schelp</h2>
+  <p>€2,50 per uur</p>
+  <button class="primary" onclick="toOpen()">Start</button>
+</div>
+
+<!-- SCREEN 3 -->
+<div id="s3" class="screen">
+  <div id="shellAnim" class="shell-anim">
+    <div class="shell-top"></div>
+    <div class="shell-bottom"></div>
+  </div>
+
+  <button class="primary big" onclick="startTimer()">OPEN</button>
+</div>
+
+<!-- SCREEN 4 -->
+<div id="s4" class="screen">
+  <div id="shellOpen" class="shell-anim open">
+    <div class="shell-top"></div>
+    <div class="shell-bottom"></div>
+  </div>
+
+  <div class="timer" id="time">0 sec</div>
+  <div id="cost">€0.00</div>
+
+  <button onclick="goToClose()">Sluit schelp</button>
+</div>
+
+<!-- SCREEN 5 -->
+<div id="s5" class="screen">
+  <div id="shellClose" class="shell-anim open">
+    <div class="shell-top"></div>
+    <div class="shell-bottom"></div>
+  </div>
+
+  <h2>Schelp sluiten...</h2>
+</div>
+
+<!-- SCREEN 6 -->
+<div id="s6" class="screen">
+  <h2>Klaar</h2>
+  <p id="result"></p>
+</div>
+
+<script>
+let selected = null;
+let time = 0;
+let interval;
+
+const positions = [
+  {x: 40, y: 40},
+  {x: 120, y: 30},
+  {x: 200, y: 60},
+  {x: 60, y: 120},
+  {x: 150, y: 110},
+  {x: 220, y: 140},
+  {x: 100, y: 170}
+];
+
+const grid = document.getElementById("grid");
+
+positions.forEach((pos, i) => {
+  let div = document.createElement("div");
+  div.className = "shell";
+
+  if (Math.random() < 0.3) div.classList.add("taken");
+
+  div.style.left = pos.x + "px";
+  div.style.top = pos.y + "px";
+
+  div.onclick = () => {
+    if (div.classList.contains("taken")) return;
+
+    document.querySelectorAll(".shell").forEach(s => s.classList.remove("selected"));
+    div.classList.add("selected");
+    selected = i;
+  };
+
+  grid.appendChild(div);
+});
+
+function show(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+function toConfirm() {
+  if (selected === null) {
+    alert("Kies eerst een schelp 🐚");
+    return;
+  }
+  show("s2");
+}
+
+function toOpen() {
+  show("s3");
+}
+
+/* 🔊 GELUID DIRECT BIJ OPEN */
+function playUnlockSound() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+  function tone(freq, duration, delay=0) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime + delay);
+    gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + delay + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + delay + duration);
+
+    osc.start(ctx.currentTime + delay);
+    osc.stop(ctx.currentTime + delay + duration);
+  }
+
+  tone(500, 0.12);
+  tone(800, 0.18, 0.1);
+}
+
+function startTimer() {
+  // 🔊 meteen geluid
+  playUnlockSound();
+
+  // 🐚 open animatie meteen zichtbaar
+  document.getElementById("shellAnim").classList.add("open");
+
+  setTimeout(() => show("s4"), 500);
+
+  interval = setInterval(() => {
+    time++;
+    document.getElementById("time").innerText = time + " sec";
+    document.getElementById("cost").innerText = "€" + (time * 0.02).toFixed(2);
+  }, 1000);
+}
+
+function goToClose() {
+  clearInterval(interval);
+  show("s5");
+
+  setTimeout(() => {
+    document.getElementById("shellClose").classList.remove("open");
+  }, 100);
+
+  setTimeout(() => {
+    show("s6");
+    document.getElementById("result").innerText =
+      "Totaal: €" + (time * 0.02).toFixed(2);
+  }, 800);
+}
+</script>
+
+</body>
+</html>
